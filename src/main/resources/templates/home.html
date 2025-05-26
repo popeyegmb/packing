@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://code.jquery.com/jquery-latest.min.js"></script>
+</head>
+<body>
+<!-- Header Include -->
+<div th:replace="fragments/header :: header "></div>
+
+<!-- Main Content -->
+<div class="container mt-5">
+
+    <input id="orderBarcode" placeholder="order number scan" style="width: 300px; height: 40px; font-size: 20px; padding: 5px; border-radius: 5px; border: 1px solid #ccc;"/>
+    
+    <input type="text" id="productBarcode" placeholder="product barcode scan" style="width: 300px; height: 40px; font-size: 20px; padding: 5px; border-radius: 5px; border: 1px solid #ccc;" disabled />
+    
+    <div id="orderItems" style="margin-top:30px;"></div>
+    
+    
+    <button id="saveButton" class="btn btn-success mt-3" >Save</button>
+</div>
+
+<script>
+$(function() {
+    
+
+    let orderItems = [];  // 주문 상품 리스트 (scannedCount 포함)
+    let scannedErrorItems = []; // 스캔 오류 상품 리스트
+
+    // 
+    $('#orderBarcode').on('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+
+            const orderNumber = $(this).val().trim();
+            if (!orderNumber) return;
+
+            console.log("검색 시작:", orderNumber);
+
+            $.ajax({
+                url: '/api/getOrderDetail',
+                method: 'POST',
+                data: { orderNumber: orderNumber },
+                dataType: 'json',
+                success: function (response) {
+                    const output = $('#orderItems');
+
+                    if (typeof response === 'string') {
+                        try {
+                            response = JSON.parse(response);
+                        } catch (e) {
+                            console.error("JSON 파싱 오류:", e);
+                            output.html(`<p style="color:red;">응답 오류: ${response}</p>`);
+                            return;
+                        }
+                    }
+
+                    if (response.length > 0) {
+                        $('#orderBarcode').prop('disabled', true);
+                        $('#productBarcode').prop('disabled', false).focus();
+
+                        // scannedCount 필드 추가해 초기화
+                        orderItems = response.map(item => ({
+                            ...item,
+                            scannedCount: 0
+                        }));
+
+                        renderOrderItems();
+                    } else {
+                        output.html(`<p style="color:red;">주문을 찾을 수 없습니다.</p>`);
+                    }
+                },
+                error: function (xhr) {
+                    $('#orderItems').html(`<p style="color:red;">오류 발생: ${xhr.responseText}</p>`);
+                }
+            });
+        }
+    });
+
+    // 주문 상품 리스트 렌더링
+    function renderOrderItems() {
+        if (orderItems.length === 0) {
+            $('#orderItems').html('');
+            return;
+        }
+
+        const orderNumber = orderItems[0].orderNumber;
+
+        const html = orderItems.map(item =>
+            `<li>
+                ${item.name} x ${item.quantity} (스캔됨: ${item.scannedCount})<br/>
+                SKU: ${item.sku}
+                
+                 <button class="btn btn-primary btn-sm increase-btn" data-sku="${item.sku}">Increase</button>
+             </li>`
+        ).join('');
+
+        $('#orderItems').html(`
+            <h3>Order #${orderNumber}</h3>
+            <ul>${html}</ul>
+        `);
+    }
+
+    // 상품 바코드 입력 처리
+    $('#productBarcode').on('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+
+            const barcode = $(this).val().trim();
+            if (!barcode) return;
+
+            const foundItem = orderItems.find(item => item.sku === barcode);
+
+            if (foundItem) {
+                if (foundItem.scannedCount < foundItem.quantity) {
+                    foundItem.scannedCount++;
+                    renderOrderItems();
+                    console.log(`상품 ${foundItem.name} 스캔됨: ${foundItem.scannedCount}`);
+                } else {
+                    alert(`상품 "${foundItem.name}"는 이미 주문 수량만큼 모두 스캔되었습니다.`);
+                }
+            } else {
+            
+                alert('주문 내역에 없는 상품입니다.');
+            }
+
+            $(this).val('');
+        }
+    });
+
+$('#orderItems').on('click', '.increase-btn', function() {
+    console.log("Increase 버튼 클릭됨");
+    const sku = $(this).data('sku');
+
+    const foundItem = orderItems.find(item => item.sku === String(sku));
+    if (foundItem) {
+
+        if (foundItem.scannedCount < foundItem.quantity) {
+            if( scannedErrorItems.some(item => item.sku === foundItem.sku)){
+                alert(`상품 "${foundItem.name}"는 이미 스캔 오류 리스트에 있습니다.`);
+                return;
+            }else{
+                console.log(scannedErrorItems)
+                scannedErrorItems.push({
+                sku: foundItem.sku,
+                name: foundItem.name
+                });
+            }
+            
+            foundItem.scannedCount++;
+            renderOrderItems();
+            console.log(`상품 ${foundItem.name} 스캔됨: ${foundItem.scannedCount}`);
+        } else {
+            alert(`상품 "${foundItem.name}"는 이미 주문 수량만큼 모두 스캔되었습니다.`);
+        }
+    }
+    else{
+        
+        alert('주문 내역에 없는 상품입니다.');
+        
+    }
+});
+
+    $("#saveButton").click(function(){
+        const orderNumber = orderItems[0].orderNumber;
+        
+        const scannedItems = orderItems.map(item => ({
+            orderNumber: item.orderNumber,
+            productName: item.name,
+            productQ: item.quantity,        
+            productSku: item.sku,
+            scannedCount: item.scannedCount
+        }));
+        console.log("스캔 상품 리스트:", scannedErrorItems);
+        const scannedErrorItemss = scannedErrorItems.map(item => ({
+            
+            orderNumber: orderNumber,
+            productName: item.name,
+            productSku: item.sku
+        }));
+        console.log("스캔 오류 상품 리스트:", scannedErrorItemss);
+        const payload = {
+    scannedItems: scannedItems,
+    scannedErrorItems: scannedErrorItemss
+};
+    console.log("저장할 데이터:", payload);
+        $.ajax({
+            url: '/api/saveScannedItems',
+             type: "POST", //
+             contentType: "application/json",  // 중요
+            data: JSON.stringify(payload),       // 중요 ,
+            success: function (response) {
+                alert('저장되었습니다.');
+                $('#orderBarcode').prop('disabled', false).val('').focus();
+                $('#productBarcode').prop('disabled', true).val('');
+                $('#orderItems').html('');
+                orderItems = [];
+            },
+            error: function (xhr) {
+                alert('저장 오류: ' + xhr.responseText);
+            }
+        });
+    }); 
+
+ 
+});
+</script>
+
+<!-- <div th:replace="fragments/footer :: footer "></div> -->
+</body>
+</html>
