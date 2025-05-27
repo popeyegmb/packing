@@ -19,18 +19,23 @@ public class UserRepository {
     @PersistenceContext
     private EntityManager entityManager;
 
-    public void login(UserVO userVO) {
-        // Assuming UserVO has a method to get username and password
+    public UserVO login(UserVO userVO) {
         String userId = userVO.getUserid();
         String password = userVO.getPassword();
 
-        // Here you would typically query the database to check if the user exists
-        // For example:
+        
         UserVO foundUser = entityManager.createQuery("SELECT u FROM UserVO u WHERE u.userid = :userId AND u.password = :password", UserVO.class)
                                          .setParameter("userId", userId)
                                          .setParameter("password", password)
                                          .getSingleResult();    
         if (foundUser != null) {
+            return foundUser;
+        }
+        else{
+            System.err.println("User not found with ID: " + userId);
+            return null; // Return null if no user found
+        }
+        
 
     }
 

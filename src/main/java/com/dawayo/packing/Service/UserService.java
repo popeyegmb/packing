@@ -18,9 +18,9 @@ public class UserService {
 
     private final UserRepository userRepository;
 
-    public void login(UserVO userVO) {
+    public UserVO login(UserVO userVO) {
      
-       userRepository.login(userVO);
+       return userRepository.login(userVO);
 
     }
 
