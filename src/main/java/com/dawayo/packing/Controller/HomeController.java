@@ -22,7 +22,12 @@ public class HomeController {
     private final UserService userService;
 
     @GetMapping("/")
-    public String home(){
+    public String home(HttpServletRequest request, Model model) {
+        HttpSession session = request.getSession(true); 
+        if (session.getAttribute("id") != null) {
+            System.err.println("Session ID: " + session.getAttribute("id"));
+            model.addAttribute("userId", session.getAttribute("id"));
+        }
         return "home"; 
     }
 
@@ -52,4 +57,4 @@ public String loginPost(UserVO userVO, HttpServletRequest request, HttpServletRe
     
     return "redirect:/";
 }
-}
+} 

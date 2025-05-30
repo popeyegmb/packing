@@ -40,76 +40,81 @@ public class ApiRestController {
 @PostMapping("/getOrderDetail")
 @ResponseBody
 public ResponseEntity<String> getOrderDetail(@RequestParam("orderNumber") String orderNumber) throws IOException, InterruptedException {
-    String productId = ""; // Replace with the actual product ID you want to retrieve
-    String urlString = "https://dawayo.de/wp-json/wc/v3/orders/" + orderNumber +
-            "?consumer_key=" + consumer_key +
-            "&consumer_secret=" + consumer_secret;
-    
-    HttpClient client = HttpClient.newHttpClient();
-    HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(urlString))
-            .GET()
-            .build();
 
-    // orderNumber에 해당하는 주문 정보 가져오기        
-    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-    ObjectMapper objectMapper = new ObjectMapper();
-    Map<String, Object> map = objectMapper.readValue(response.body(), new TypeReference<Map<String, Object>>() {});
-    System.err.println(map);
-    List<Map<String, Object>> lineItems = (List<Map<String, Object>>) map.get("line_items");
-   
-    
-    //getting product SKU from product meta data
-    ArrayNode resultArray = objectMapper.createArrayNode();
-
-    for (Map<String, Object> item : lineItems) {
-
-        String name = (String) item.get("name");
-        int quantity = (Integer) item.get("quantity");
-        productId = Integer.toString((Integer) item.get("product_id"));
-
-        String productUrlString = "https://dawayo.de/wp-json/wc/v3/products/" + productId +
-                "?consumer_key=" + consumer_key +
-                "&consumer_secret=" + consumer_secret;
-
-        HttpRequest productRequest = HttpRequest.newBuilder()
-                .uri(URI.create(productUrlString))
-                .GET()
-                .build();
-
-        HttpResponse<String> productResponse = client.send(productRequest, HttpResponse.BodyHandlers.ofString());
-        Map<String, Object> productMap = objectMapper.readValue(productResponse.body(), new TypeReference<Map<String, Object>>() {});
-        List<Map<String, Object>> productMetaList = (List<Map<String, Object>>) productMap.get("meta_data");
-
-        String sku = null;
-        for (Map<String, Object> meta : productMetaList) {
-            if ("custom_product_sku".equals(meta.get("key"))) {
-                sku = (String) meta.get("value");
-                System.out.println("SKU: " + sku);
-                break;
-            }
-        }
-
-        // JSON 객체 생성
-        ObjectNode itemNode = objectMapper.createObjectNode();
-        itemNode.put("orderNumber", orderNumber);
-        itemNode.put("name", name);
-        itemNode.put("quantity", quantity);
-        itemNode.put("sku", sku != null ? sku : "");
-
-        
-        resultArray.add(itemNode);
-    }
-
-
-    String resultJson = objectMapper.writeValueAsString(resultArray);
-    System.out.println("Final JSON Result: " + resultJson);
-
+    if (orderService.existsByOrderNumber(orderNumber)) {
         return ResponseEntity
                 .ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(resultJson);
+                .body("FEHLER: Order number " + orderNumber + " already exists in the database.");
+    }
+
+    String orderUrl = "https://dawayo.de/wp-json/wc/v3/orders/" + orderNumber +
+            "?consumer_key=" + consumer_key +
+            "&consumer_secret=" + consumer_secret;
+
+    HttpClient client = HttpClient.newHttpClient();
+    ObjectMapper objectMapper = new ObjectMapper();
+
+    // 주문 정보 요청
+    HttpResponse<String> orderResponse = sendRequest(client, orderUrl);
+    Map<String, Object> orderMap = objectMapper.readValue(orderResponse.body(), new TypeReference<>() {});
+    List<Map<String, Object>> lineItems = (List<Map<String, Object>>) orderMap.get("line_items");
+
+    ArrayNode resultArray = objectMapper.createArrayNode();
+
+    for (Map<String, Object> item : lineItems) {
+        String name = (String) item.get("name");
+        int quantity = (Integer) item.get("quantity");
+        String productId = String.valueOf(item.get("product_id"));
+
+        String productUrl = "https://dawayo.de/wp-json/wc/v3/products/" + productId +
+                "?consumer_key=" + consumer_key +
+                "&consumer_secret=" + consumer_secret;
+
+        HttpResponse<String> productResponse = sendRequest(client, productUrl);
+        Map<String, Object> productMap = objectMapper.readValue(productResponse.body(), new TypeReference<>() {});
+
+        ObjectNode itemNode = objectMapper.createObjectNode();
+        itemNode.put("orderNumber", orderNumber);
+
+        // 상품 정보 예외 처리
+        if (productMap.containsKey("code") && "woocommerce_rest_product_invalid_id".equals(productMap.get("code"))) {
+            itemNode.put("name", "unknown");
+            itemNode.put("quantity", "unknown");
+            itemNode.put("sku", "unknown");
+        } else {
+            itemNode.put("name", name);
+            itemNode.put("quantity", quantity);
+
+            String sku = "";
+            List<Map<String, Object>> metaList = (List<Map<String, Object>>) productMap.get("meta_data");
+            for (Map<String, Object> meta : metaList) {
+                if ("custom_product_sku".equals(meta.get("key"))) {
+                    sku = (String) meta.get("value");
+                    break;
+                }
+            }
+            itemNode.put("sku", sku);
+        }
+
+        resultArray.add(itemNode);
+    }
+
+    String resultJson = objectMapper.writeValueAsString(resultArray);
+    return ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(resultJson);
 }
+
+// 공통 요청 메서드 분리
+private HttpResponse<String> sendRequest(HttpClient client, String url) throws IOException, InterruptedException {
+    HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .GET()
+            .build();
+    return client.send(request, HttpResponse.BodyHandlers.ofString());
+}
+
     // @PostMapping("/saveScannedItems")
     // public ResponseEntity<String> saveScannedItems(PackingVO packingVO) {
     //     System.err.println("Received scanned items: " + packingVO.toString());

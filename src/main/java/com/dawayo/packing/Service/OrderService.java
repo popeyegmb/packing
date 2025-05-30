@@ -28,6 +28,10 @@ public class OrderService {
         orderRepository.saveAllError(scannedErrorItems);
     }
 
+    public boolean existsByOrderNumber(String orderNumber) {
+        return orderRepository.existsByOrderNumber(orderNumber);
+    }
+
     
 
 

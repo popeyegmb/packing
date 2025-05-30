@@ -47,5 +47,14 @@ public class OrderRepository {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'login'");
     }
+
+
+
+    public boolean existsByOrderNumber(String orderNumber) {
+        Long count = entityManager.createQuery("SELECT COUNT(p) FROM PackingVO p WHERE p.orderNumber = :orderNumber", Long.class)
+                                  .setParameter("orderNumber", orderNumber)
+                                  .getSingleResult();
+        return count > 0;
+    }
     
 }
