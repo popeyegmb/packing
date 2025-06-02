@@ -24,6 +24,11 @@ public class UserService {
 
     }
 
+    public List<PackingVO> getPackingList(String sessionId) {
+        // TODO Auto-generated method stub
+        return userRepository.getPackingList(sessionId);
+    }
+
   
 
 

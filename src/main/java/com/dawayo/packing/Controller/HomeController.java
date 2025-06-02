@@ -1,5 +1,12 @@
 package com.dawayo.packing.Controller;
 
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -8,7 +15,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 
 import com.dawayo.packing.Service.UserService;
+import com.dawayo.packing.VO.PackingVO;
 import com.dawayo.packing.VO.UserVO;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -57,4 +67,30 @@ public String loginPost(UserVO userVO, HttpServletRequest request, HttpServletRe
     
     return "redirect:/";
 }
+
+    @GetMapping("/mypage")
+    public String myPage(HttpServletRequest req, Model model) {
+    HttpSession session = req.getSession(false);
+    String sessionId = session.getAttribute("id").toString();
+    System.err.println(sessionId);
+
+    List<PackingVO> packingList = userService.getPackingList(sessionId);
+
+    if (!packingList.isEmpty()) {
+        
+
+        //날짜 데이터만
+        // 날짜별로 그룹화 데이터는 날짜랑 주문번호로만
+
+        Map<Object, List<Object>> groupedByDate = packingList.stream()
+        .collect(Collectors.groupingBy(p -> p.getPackingDate(), Collectors.mapping(p -> p.getOrderNumber(), Collectors.toList())));
+        System.err.println("groupedByDate: " + groupedByDate);
+        model.addAttribute("groupedByDate", groupedByDate);
+    model.addAttribute("resultList", packingList);
+    }
+
+    
+    return "mypage";
+}
+
 } 

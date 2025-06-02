@@ -39,6 +39,17 @@ public class UserRepository {
 
     }
 
+    public List<PackingVO> getPackingList(String sessionId) {
+      return entityManager.createNativeQuery(
+    "SELECT * FROM packing_list p " +
+    "WHERE p.packer_id = :sessionId " +
+    "AND p.id IN (SELECT MIN(id) FROM packing_list WHERE packer_id = :sessionId GROUP BY order_number)",
+    PackingVO.class
+).setParameter("sessionId", sessionId)
+ .getResultList();
+
+    }
+
 
 
     

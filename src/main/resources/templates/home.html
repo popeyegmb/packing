@@ -11,14 +11,23 @@
 
 <!-- Main Content -->
 <div class="container mt-5">
+    <p>패킹 담당자 선택</p>
+    <select id="packerId" name="packerId" class="form-control mb-3" style="width: 300px; height: 40px; font-size: 20px; padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+   
+    <option value="0" selected>Landric</option>
+    <option value="1">Ravi</option>
+    <option value="2">Park, Hyeonsan</option>
+    <option value="3">Kim, TaeHyeong</option>    
+    <option value="4">Hwang, Hyeonho</option>
+        
+    </select>
 
-    <input type="hidden" th:value="${loginUser}" id="packerId" name="packerId"/>
     <input id="orderBarcode" placeholder="order number scan" style="width: 300px; height: 40px; font-size: 20px; padding: 5px; border-radius: 5px; border: 1px solid #ccc;"/>
     
     <input type="text" id="productBarcode" placeholder="product barcode scan" style="width: 300px; height: 40px; font-size: 20px; padding: 5px; border-radius: 5px; border: 1px solid #ccc;" disabled />
     
     <!-- 로딩 인디케이터 추가 -->
-    <div id="loadingIndicator" style="display: none; font-weight: bold; color: #007bff; margin-bottom: 15px;">
+    <div class="mt-4" id="loadingIndicator" style="display: none; font-weight: bold; color: #007bff; margin-bottom: 15px;">
         ⏳ 주문 정보를 불러오는 중입니다...
     </div>
     
@@ -162,14 +171,12 @@ $(function() {
         const foundItem = orderItems.find(item => item.sku === String(sku));
         if (foundItem) {
             if (foundItem.scannedCount < foundItem.quantity) {
-                if (scannedErrorItems.some(item => item.sku === foundItem.sku)) {
-                    alert(`상품 "${foundItem.name}"는 이미 스캔 오류 리스트에 있습니다.`);
-                } else {
+                if (!scannedErrorItems.some(item => item.sku === foundItem.sku)) {
                     scannedErrorItems.push({
                         sku: foundItem.sku,
                         name: foundItem.name
                     });
-                }
+                } 
 
                 foundItem.scannedCount++;
                 renderOrderItems();
