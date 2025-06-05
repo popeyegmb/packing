@@ -20,8 +20,9 @@
                 <span th:text="${entry.key}"></span>
             </div>
             <div class="card-body">
-                <ul class="list-group list-group-horizontal p-0 m-0" style="list-style: none;">
-    <li class="list-group-item d-flex justify-content-between align-items-center" th:each="item : ${entry.value}">
+                <ul class="list-group d-grid" style="display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px;">
+    <li class="list-group-item d-flex justify-content-between align-items-center"
+        th:each="item : ${entry.value}">
         <span th:text="${item}"></span>
     </li>
 </ul>

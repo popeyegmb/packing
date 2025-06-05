@@ -56,11 +56,19 @@ public String loginPost(UserVO userVO, HttpServletRequest request, HttpServletRe
     if (foundUser != null) {
         System.err.println("Login successful for user: " + foundUser.getUserid());
         System.err.println("User details: " + foundUser.toString());
-
         HttpSession session = request.getSession(true); 
+        if(foundUser.getUserid()=="admin" && foundUser.getPassword()=="admin") {
+            System.err.println("Admin user logged in");
+            session.setAttribute("id", foundUser.getId());
+            return "redirect:/admin"; // Redirect to admin page if admin credentials are used
+        }
+       else{
 
         session.setAttribute("id", foundUser.getId()); 
         return "redirect:/"; 
+       }
+        
+
     }
     System.err.println("Login failed for user: " + userVO.getUserid());
 

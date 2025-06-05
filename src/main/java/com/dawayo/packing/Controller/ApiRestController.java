@@ -59,6 +59,7 @@ public ResponseEntity<String> getOrderDetail(@RequestParam("orderNumber") String
     // 주문 정보 요청
     HttpResponse<String> orderResponse = sendRequest(client, orderUrl);
     Map<String, Object> orderMap = objectMapper.readValue(orderResponse.body(), new TypeReference<>() {});
+    
     List<Map<String, Object>> lineItems = (List<Map<String, Object>>) orderMap.get("line_items");
 
     ArrayNode resultArray = objectMapper.createArrayNode();
@@ -116,15 +117,6 @@ private HttpResponse<String> sendRequest(HttpClient client, String url) throws I
     return client.send(request, HttpResponse.BodyHandlers.ofString());
 }
 
-    // @PostMapping("/saveScannedItems")
-    // public ResponseEntity<String> saveScannedItems(PackingVO packingVO) {
-    //     System.err.println("Received scanned items: " + packingVO.toString());
-    //     // Save the scanned items to the database
-    //     //orderService.save(packingVO);
-
-    //     // Return a response
-    //     return ResponseEntity.ok("Scanned items received successfully");
-    // }
     @PostMapping("/saveScannedItems")
 public ResponseEntity<String> saveScannedItems(@RequestBody PackingRequestVO request) {
 
